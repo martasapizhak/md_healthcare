@@ -1,0 +1,90 @@
+
+---
+title: "SDS192 Mini-Project 3"
+date: "Tuesday, November 23rd, 2021"
+output:
+  pdf_document:
+    toc: no
+    df_print: paged
+---
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+# Do not edit this chunk unless you know what you are doing
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE, fig.width = 16/2, fig.height = 9/2
+)
+```
+
+```{r, echo=FALSE}
+# Load all packages here
+library(tidyverse)
+library(sf)
+```
+
+## Administrative info:
+
+* Section number: 01
+* Group number: S1-02
+* Group leader name: Marta Sapizhak
+* Group leader academic email: msapizhak@smith.edu
+* Partner name: Annah Mutaya
+* Partner academic email: amutaya@smith.edu
+
+
+```{r, echo=FALSE}
+
+USA_map <-  maps::map("state", plot = FALSE, fill = TRUE)
+USA_sf <- USA_map %>%
+  st_as_sf(crs = 4326) %>% 
+  filter(ID == "maryland")
+
+cities_pop <- read_csv("uscities.csv") %>% 
+  filter(state_id == "MD")
+
+cities_interest <- cities_pop %>% 
+  filter(city %in% c("Baltimore", "Germantown"))
+
+income <- read_csv("md_income.csv") %>% 
+  pivot_longer(names_to = "county", 
+               values_to = "income", 
+               cols = -c("Date created", "Year")) %>% 
+  filter(Year == 2019) %>% 
+  select(county, income)
+
+hospitals <- "hospitals/" %>% 
+  read_sf()
+
+md_income <-
+  tidycensus::get_acs(
+    geography = "county",
+    variables = "B01003_001",
+    state = "MD",
+    geometry = TRUE
+  ) %>% 
+    tidyr::separate(NAME, c("county"), sep = ", ") %>% 
+  select(county, geometry) %>% 
+  inner_join(income, by = "county")
+```
+# Q1: Peer evaluation Google Form
+
+\newpage
+
+# Q2: Introduction
+
+As the prices for healthcare continue to escalate in the US, accessibility of hospitals to low income households becomes a concern. The United States has one of the most expensive^[https://www.commonwealthfund.org/publications/journal-article/2018/mar/health-care-spending-united-states-and-other-high-income] healthcare systems in the world as compared to other developed countries. 
+A state that could be leading a revolution in terms of making healthcare affordable for all households is Maryland. Maryland is the site of two big experiments^[https://www.vox.com/policy-and-politics/2020/1/22/21055118/maryland-health-care-global-hospital-budget] in containing health care costs. The first: Since the 1970s, the state has set the prices hospitals can charge for medical care, known as all-payer rate setting. The second experiment: Since 2014, it’s also capped how much health spending can grow overall, including how much revenue each hospital can take in. That said, we can see that there is almost little to no relationship between the median income of a city in the state, and the number of hospitals functional in that city. We can see that though cities such as Baltimore and Germantown have higher median incomes, and hence more hospitals, they also have a higher population. Other cities that do have relatively lower median income like Hagerstown might look like they have fewer hospitals, but they also are less populated. 
+It does seem then that the experiments in Maryland could be adopted in other states as well, as it is the goal of the government to provide health care for all its citizens. It should be the case then that there should be no relationship at all between the income levels and access to healthcare.^[https://data.imap.maryland.gov/datasets/maryland-hospitals-hospitals/explore] ^[https://simplemaps.com/data/us-cities]
+
+# Q3: Map
+
+```{r, echo = FALSE}
+# Put code to create your static map here:
+ggplot() +
+  geom_sf(data = md_income, aes(fill = income)) + scale_fill_gradient(low = "white", high = "darkgreen")+
+  geom_point(data = cities_pop, aes(x = lng, y = lat, size = population)) + scale_size(range = c(0.1, 6)) +
+  geom_sf(data = hospitals, shape = 3, col = "blue") +
+  geom_text(data = cities_interest, aes(x = lng, y = lat, label = city), colour ="white") +
+  theme_bw() + theme(panel.background = element_rect(fill = "azure4"))+
+  labs(title = "Median income by county. Locations of hospitals and cities population", subtitle = "In Maryland", x = "", y ="", fill = "Income", size = "City population")
+
+```
